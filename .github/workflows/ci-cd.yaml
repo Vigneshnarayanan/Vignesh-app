@@ -9,11 +9,12 @@ jobs:
   helm-lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Lint Helm chart
         run: helm lint .
@@ -22,18 +23,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: helm-lint
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Kubeval for manifest validation
+      - name: Install Helm and Kubeval
         run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
           curl -s https://api.github.com/repos/instrumenta/kubeval/releases/latest \
           | grep "browser_download_url.*linux-amd64.tar.gz" \
           | cut -d : -f 2,3 \
           | tr -d \" \
-          | wget -qi - \
-          && tar xf kubeval*.tar.gz \
-          && sudo mv kubeval /usr/local/bin/
+          | wget -qi - && \
+          tar xf kubeval*.tar.gz && \
+          sudo mv kubeval /usr/local/bin/
 
       - name: Render and validate manifests
         run: |
