@@ -1,0 +1,42 @@
+# Backend configuration
+backend:
+  image:
+    repository: my-backend-image
+    tag: stable
+    pullPolicy: IfNotPresent
+  containerPort: 5000
+  servicePort: 5000
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+
+# Frontend configuration
+frontend:
+  image:
+    repository: my-frontend-image
+    tag: stable
+    pullPolicy: IfNotPresent
+  containerPort: 80
+  servicePort: 80
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+
+# HPA settings
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+# Debugbox (disabled in prod)
+debugbox:
+  enabled: false
