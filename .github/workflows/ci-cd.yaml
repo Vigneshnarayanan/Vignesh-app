@@ -37,7 +37,12 @@ jobs:
           tar xf kubeval*.tar.gz && \
           sudo mv kubeval /usr/local/bin/
 
-      - name: Render and validate manifests
+      - name: Render and validate manifests (dev)
         run: |
-          helm template . > rendered.yaml
-          kubeval rendered.yaml
+          helm template . -f values-dev.yaml > rendered-dev.yaml
+          kubeval rendered-dev.yaml
+
+      - name: Render and validate manifests (prod)
+        run: |
+          helm template . -f values-prod.yaml > rendered-prod.yaml
+          kubeval rendered-prod.yaml
