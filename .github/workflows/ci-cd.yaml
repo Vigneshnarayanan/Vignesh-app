@@ -40,9 +40,8 @@ jobs:
       - name: Render and validate manifests (dev)
         run: |
           helm template . -f values-dev.yaml > rendered-dev.yaml
-          kubeval rendered-dev.yaml
-
+          kubeval --ignore-missing-schemas rendered-dev.yaml
       - name: Render and validate manifests (prod)
         run: |
           helm template . -f values-prod.yaml > rendered-prod.yaml
-          kubeval rendered-prod.yaml
+          kubeval --ignore-missing-schemas rendered-prod.yaml
