@@ -1,0 +1,269 @@
+---
+# Source: vignesh-app/templates/backend-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vignesh-app-backend-secret
+  labels:
+    app: vignesh-app
+    component: backend
+type: Opaque
+data:
+  api-token: c2VjcmV0LXRva2VuLTEyMw==
+---
+# Source: vignesh-app/templates/backend-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vignesh-app-backend-app
+  labels:
+    app: vignesh-app
+    component: backend
+data:
+  app.py: |
+    from flask import Flask, request
+    from flask_cors import CORS
+    
+    app = Flask(__name__)
+    CORS(app)
+    
+    @app.route('/')
+    def index():
+        return "Backend API working!"
+    
+    @app.route('/token')
+    def token():
+        with open('/secrets/api-token') as f:
+            return f.read()
+    
+    app.run(host='0.0.0.0', port=5000)
+---
+# Source: vignesh-app/templates/frontend-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vignesh-app-frontend-config
+  namespace: team-a
+data:
+  index.html: |
+    <html>
+    <head>
+      <title>Frontend</title>
+    </head>
+    <body>
+      <h1>Welcome to Vignesh's App 🚀</h1>
+      <p>Connecting to backend...</p>
+      <div id="result">Loading token...</div>
+
+      <script>
+        fetch("http://vignesh-app-backend.team-a.svc.cluster.local:5000/token")
+          .then(res => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          })
+          .then(data => {
+            document.getElementById("result").innerText = "Token: " + data;
+          })
+          .catch(err => {
+            document.getElementById("result").innerText = "Error: " + err;
+          });
+      </script>
+    </body>
+    </html>
+---
+# Source: vignesh-app/templates/backend-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: vignesh-app/templates/backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: vignesh-app-backend
+  labels:
+    app: vignesh-app
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+  selector:
+    app: vignesh-app
+    component: backend
+---
+# Source: vignesh-app/templates/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: vignesh-app-frontend
+  labels:
+    app: vignesh-app
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: vignesh-app
+    component: frontend
+---
+# Source: vignesh-app/templates/debugbox.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debugbox
+  namespace: team-a
+spec:
+  containers:
+  - name: curl
+    image: alpine/curl:latest
+    command: ["/bin/sh"]
+    args: ["-c", "sleep 3600"]
+    resources:
+      requests:
+        cpu: "0"
+        memory: "0"
+      limits:
+        cpu: "0"
+        memory: "0"
+  restartPolicy: Never
+---
+# Source: vignesh-app/templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vignesh-app-backend
+  namespace: team-a
+  labels:
+    app: vignesh-app
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vignesh-app
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: vignesh-app
+        component: backend
+    spec:
+      serviceAccountName: app-sa
+      containers:
+        - name: backend
+          image: vignesh/backend:latest
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              pip install flask flask-cors && python /app/app.py
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: app-volume
+              mountPath: /app/app.py
+              subPath: app.py
+            - name: secret-volume
+              mountPath: /secrets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      volumes:
+        - name: app-volume
+          configMap:
+            name: vignesh-app-backend-app
+        - name: secret-volume
+          secret:
+            secretName: vignesh-app-backend-secret
+---
+# Source: vignesh-app/templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vignesh-app-frontend
+  labels:
+    app: vignesh-app
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vignesh-app
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: vignesh-app
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: frontend-config
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+            - name: frontend-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: frontend-config
+          configMap:
+            name: vignesh-app-frontend-config
+---
+# Source: vignesh-app/templates/backend-hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vignesh-app-backend
+  labels:
+    app: vignesh-app
+    component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vignesh-app-backend
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50

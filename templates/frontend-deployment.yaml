@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vignesh-app.fullname" . }}-frontend
+  labels:
+    app: {{ include "vignesh-app.name" . }}
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "vignesh-app.name" . }}
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "vignesh-app.name" . }}
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.frontend.image | default "nginx:1.25" }}
+          ports:
+            - containerPort: {{ .Values.frontend.containerPort | default 80 }}
+          volumeMounts:
+            - name: html-volume
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+      volumes:
+        - name: html-volume
+          configMap:
+            name: {{ include "vignesh-app.fullname" . }}-frontend-config

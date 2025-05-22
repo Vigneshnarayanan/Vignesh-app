@@ -1,0 +1,55 @@
+backend:
+  image: python:3.9-slim
+  containerPort: 5000
+  servicePort: 5000
+  localPort: 6001       # Local port to forward to backend container port
+  secretToken: secret-token-123
+  pvcName: backend-pvc
+  appFile: |
+    from flask import Flask, request
+    from flask_cors import CORS
+
+    app = Flask(__name__)
+    CORS(app)
+
+    @app.route('/')
+    def index():
+        return "Backend API working!"
+
+    @app.route('/token')
+    def token():
+        with open('/secrets/api-token') as f:
+            return f.read()
+
+    app.run(host='0.0.0.0', port=5000)
+
+frontend:
+  image: nginx:1.25
+  containerPort: 80
+  servicePort: 80
+  localPort: 8086       # Local port to forward to frontend container port
+  html: |
+    <html>
+    <head>
+      <title>Frontend</title>
+    </head>
+    <body>
+      <h1>Welcome to Vignesh's App 🚀</h1>
+      <p>Connecting to backend...</p>
+      <div id="result">Loading token...</div>
+
+      <script>
+        fetch("http://localhost:6001/token")
+          .then(res => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          })
+          .then(data => {
+            document.getElementById("result").innerText = "Token: " + data;
+          })
+          .catch(err => {
+            document.getElementById("result").innerText = "Error: " + err;
+          });
+      </script>
+    </body>
+    </html>

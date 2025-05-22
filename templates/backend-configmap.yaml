@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vignesh-app.fullname" . }}-backend-app
+  labels:
+    app: {{ include "vignesh-app.name" . }}
+    component: backend
+data:
+  app.py: |
+{{ .Values.backend.appFile | indent 4 }}

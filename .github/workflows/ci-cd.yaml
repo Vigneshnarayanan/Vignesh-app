@@ -1,0 +1,41 @@
+name: CI/CD Pipeline for Vignesh App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Lint Helm chart
+        run: helm lint .
+
+  validate-k8s-manifests:
+    runs-on: ubuntu-latest
+    needs: helm-lint
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Kubeval for manifest validation
+        run: |
+          curl -s https://api.github.com/repos/instrumenta/kubeval/releases/latest \
+          | grep "browser_download_url.*linux-amd64.tar.gz" \
+          | cut -d : -f 2,3 \
+          | tr -d \" \
+          | wget -qi - \
+          && tar xf kubeval*.tar.gz \
+          && sudo mv kubeval /usr/local/bin/
+
+      - name: Render and validate manifests
+        run: |
+          helm template . > rendered.yaml
+          kubeval rendered.yaml
