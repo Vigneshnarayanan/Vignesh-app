@@ -52,6 +52,8 @@ frontend:
           });
       </script>
     </body>
+    </html>
+
 debugbox:
   enabled: false
   image: busybox
@@ -62,4 +64,4 @@ debugbox:
       cpu: "50m"
     limits:
       memory: "128Mi"
-      cpu: "100m"    </html>
+      cpu: "100m"
