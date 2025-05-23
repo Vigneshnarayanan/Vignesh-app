@@ -39,7 +39,7 @@ autoscaling:
 
 # Debugbox (optional pod for debugging inside the cluster)
 debugbox:
-  enabled: false  # Set to true only when needed
+  enabled: true  # Set to true only when needed
   image: nicolaka/netshoot
   resources:
     limits:
